@@ -105,6 +105,7 @@ def tokenize(item, tokenizer):
     system = B_SYS + system + E_SYS
     # add system before the first content in conversations
     item["conversations"][0]['value'] = system + item["conversations"][0]['value']
+    # item["input"] = system + item["input"]
     for i, turn in enumerate(item["conversations"]):
         role = turn['from']
         content = turn['value']
@@ -142,7 +143,7 @@ class LazySupervisedDataset(Dataset):
 
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
-        self.raw_data = raw_data
+        self.raw_data = raw_data["train"]
         self.cached_data_dict = {}
 
     def __len__(self):
@@ -168,6 +169,7 @@ class LazySupervisedDataset(Dataset):
 
 
 def load_json(data_path, data_cache_path):
+    return datasets.load_dataset("parquet", data_dir="/mnt/nfs/SFT-General/instruction_merge_set/data/")
     if data_path.endswith(".json"):
         return json.load(open(data_path, "r"))
     elif data_path.endswith(".jsonl"):

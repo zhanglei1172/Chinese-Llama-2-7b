@@ -1,0 +1,6 @@
+{
+    "DATASET": "/mnt/nfs/SFT-General/instruction_merge_set/convert_data/train-00015-of-00027-a7c91e0ecc2115bb.json",
+    "DATA_CACHE_PATH": "",
+    "MODEL_PATH": "/mnt/nfs/data/Llama-2-7b-chat-hf/",
+    "output_dir": "./checkpoints_llama2"
+}
