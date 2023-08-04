@@ -13,24 +13,26 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
+from flageval_datasets import CEvalDataset
 from llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn
+
 replace_llama_attn_with_flash_attn()
 
-import os
 import copy
-from dataclasses import dataclass, field
+import glob
 import json
+import os
 import pathlib
+from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
 
+import datasets
 import numpy as np
 import torch
-from torch.utils.data import Dataset
-import datasets
 import transformers
+from torch.utils.data import ConcatDataset, Dataset
 from transformers import Trainer
 from transformers.trainer_pt_utils import LabelSmoother
-
 
 IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
@@ -211,8 +213,14 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
     """Make dataset and collator for supervised fine-tuning."""
     rank0_print("Loading data...")
 
-    train_json = load_json(data_args.data_path, data_args.data_cache_path)
-    train_dataset = LazySupervisedDataset(train_json, tokenizer=tokenizer)
+    # train_json = load_json(data_args.data_path, data_args.data_cache_path)
+    # train_dataset = LazySupervisedDataset(train_json, tokenizer=tokenizer)
+    l_datasets = []
+    for j_file in glob.iglob(os.path.join(data_args.data_path, "*.json")):
+        _dataset = CEvalDataset(tokenizer=tokenizer, ceval_path=j_file)
+        l_datasets.append(_dataset)
+    train_dataset = ConcatDataset(datasets=l_datasets)
+    
     
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
     
@@ -226,11 +234,9 @@ class CustomTrainer(Trainer):
         if self.fsdp is not None:
             if output_dir is None:
                 output_dir = self.args.output_dir
-            from torch.distributed.fsdp import (
-                FullyShardedDataParallel as FSDP,
-                FullStateDictConfig,
-                StateDictType,
-            )
+            from torch.distributed.fsdp import FullStateDictConfig
+            from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+            from torch.distributed.fsdp import StateDictType
             save_policy = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
             with FSDP.state_dict_type(self.model, StateDictType.FULL_STATE_DICT, save_policy):
                 cpu_state_dict = self.model.state_dict()

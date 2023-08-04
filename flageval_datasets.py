@@ -1,17 +1,39 @@
+import copy
 import json
 import random
-import torch
+
 import datasets
+import torch
+import transformers
 from datasets import load_dataset
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
+from transformers.trainer_pt_utils import LabelSmoother
+
+
+def last_index(lst, value):
+    return next((len(lst) - i - 1 for i, x in enumerate(lst[::-1]) if x != value), -1)
+
+
+def safe_ids(ids, max_value, pad_id):
+    return [i if i < max_value else pad_id for i in ids]
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 huggingface_datasets = ["RAFT", "TruthfulQA", "IMDB", "BoolQ", "MMLU"]
-
+B_INST, E_INST = "[INST]", "[/INST]"
+B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
+IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
 class CEvalDataset(Dataset):
-    def __init__(self, ceval_path, using_gpt=False, item_size=5):
+    dummy_message = {
+            "system": "这个任务是中国关于civil考试的问题，请从给出的A、B、C、D四个选项中，选出其中的正确答案。请回答'A'或'B'或'C'或'D'\n",
+            "conversations": [
+                {"from": "human","value":"这个任务是中国关于civil考试的问题，请从给出的A、B、C、D四个选项中，选出其中的正确答案。请回答'A'或'B'或'C'或'D'\n\n\n请效仿此示例：问题:1， 2， 2， 4， ____， 32\n选项：A. 6\nB. 8\nC. 16\nD. 24\n答案: B\n\n请效仿此示例：问题:浪漫的时代总富于瑰丽的想象，灾难的岁月自然免不了灰暗的色彩，普罗米修斯的千秋功过就这样交替在“恩人”与“罪人”这两极间频繁地晃动着，让人____。难怪在学养深厚的经典注疏家维斯特看来，研究文献虽汗牛充栋，其实却____。 填入画横线部分最恰当的一项是____。\n选项：A. 捉摸不定 平淡无奇\nB. 无所适从 乏善可陈\nC. 扑朔迷离 差强人意\nD. 眼花缭乱 不赞一词\n答案: C\n\n请效仿此示例：问题:一个世界范围的对生产某些破坏臭氧层的化学物质的禁令只能提供一种受到保护的幻觉。已经生产出的大量的这种化学物质已经作为制冷剂存在于数百万台冰箱中。一旦它们到达大气中的臭氧层，它们引起的反应无法被停止。因此没有办法来阻止这些化学物质进一步破坏臭氧层。下面哪项最能加强上述的论述?____\n选项：A. 人们无法准确测出作为冰箱制冷剂存在的破坏臭氧层的化学物质的数量\nB. 在现代社会，为避免不健康甚至对生命构成潜在威胁的状况，冷藏食物是必要的\nC. 即使人们放弃使用冰箱，早已存在于冰箱中的制冷剂还是会威胁大气中的臭氧\nD. 冰箱中的制冷剂可以在冰箱完成使命后被完全开发并重新使用\n答案: C\n\n请效仿此示例：问题:军队的战斗力取决于武器装备和人员素质。在2008年与俄罗斯的军队冲突中损失惨重的格鲁吉亚，准备花费90亿美元，用现代化装备重新武装自己的军队。尽管美国非常支持格鲁吉亚加强军事力量，却不准备将先进的武器卖给它。以下各项陈述，除哪项陈述外，都可以解释美国的这种做法?____\n选项：A. 俄罗斯准备要求安理会对格鲁吉亚实行武器禁运\nB. 格鲁吉亚军队为这场战争准备了3年，尽管全副美式装备，却不堪一击\nC. 格军的战机在开战后数小时就放弃起飞，巡逻艇直接被俄军俘获并用卡车运走\nD. 格军的一名高级将领临阵脱逃，把部队丢弃不顾\n答案: A\n\n请效仿此示例：问题:下列情形哪一项属于自首?____\n选项：A. 甲杀人后其父主动报案并将甲送到派出所，甲当即交代了杀人的全部事实和经过\nB. 甲和乙共同贪污之后，主动到检察机关交代自己的贪污事实，但未提及乙\nC. 甲和乙共同盗窃之后，主动向公安机关反映乙曾经诈骗数千元，经查证属实\nD. 甲给监察局打电话，承认自己收受他人1万元贿赂，并交代了事情经过，然后出走不知所踪\n答案: B\n\n问题:1，0，9，16，____，48\n选项：\nA. 33\nB. 25\nC. 36\nD. 42\n答案: "}, {"from":"gpt", "value":"B"}],
+            
+        }
+    def __init__(self, tokenizer: transformers.PreTrainedTokenizer, ceval_path,using_gpt=False, item_size=5):
+        super().__init__()
+        self.tokenizer = tokenizer
         with open(ceval_path, "r", encoding="utf-8") as file:
             self.dataset = json.load(file)
         if len(ceval_path.split("\\")) > 1:
@@ -103,9 +125,25 @@ class CEvalDataset(Dataset):
         )
         formatted_string += f"\n答案: "
         prompt = prompt + "\n\n" + formatted_string
-        sample = {"prompt": prompt, "answer": answer}
-        # sample.append([prompt, answer])
-        return sample
+        human = prompt
+        system = self.first_line
+        gpt = answer
+        messages = [{"from": "human", "value": human}, {"from": "gpt", "value": gpt}]
+        item = {"conversations": messages, "system": system}
+        # self._tokenize(item, self.tokenizer)
+
+        input_ids, labels = self._tokenize(
+            copy.deepcopy(item),
+            self.tokenizer)
+        input_ids = torch.tensor(input_ids)
+        labels = torch.tensor(labels)
+        ret = dict(
+            input_ids=input_ids,
+            labels=labels,
+        )
+        # self.cached_data_dict[i] = ret
+
+        return ret
         # else:
         # prompt = self.__generate_prompt__(index)
         # entry = self.dataset[index]
@@ -119,6 +157,47 @@ class CEvalDataset(Dataset):
         # prompt = prompt + "\n\n" + formatted_string
         # sample = [prompt, answer]
         # return [sample]
+    @staticmethod
+    def _tokenize(item, tokenizer):
+        roles = {"human": "user", "gpt": "assistant"}
+        input_ids = []
+        labels = []
+        # if "instruction" in item and len(item["instruction"]) > 0:
+        #     system = item["instruction"]
+        # else:
+        system = item["system"]
+            # raise ValueError("instruction is empty")
+        system = B_SYS + system + E_SYS
+        # add system before the first content in conversations
+        item["conversations"][0]['value'] = system + item["conversations"][0]['value']
+        # item["input"] = system + item["input"]
+        for i, turn in enumerate(item["conversations"]):
+            role = turn['from']
+            content = turn['value']
+            content = content.strip()
+            if role == 'human':
+                content = f"{B_INST} {content} {E_INST} "
+                content_ids = tokenizer.encode(content)
+                labels += [IGNORE_TOKEN_ID] * (len(content_ids))
+            else:
+                # assert role == "gpt"
+                content = f"{content} "
+                content_ids = tokenizer.encode(content, add_special_tokens=False) + [tokenizer.eos_token_id]   # add_special_tokens=False remove bos token, and add eos at the end
+                labels += content_ids
+            input_ids += content_ids
+
+        input_ids = input_ids[:tokenizer.model_max_length]
+        labels = labels[:tokenizer.model_max_length]
+
+        trunc_id = last_index(labels, IGNORE_TOKEN_ID) + 1
+        input_ids = input_ids[:trunc_id]
+        labels = labels[:trunc_id]
+        if len(labels) == 0:
+            return CEvalDataset._tokenize(CEvalDataset.dummy_message, tokenizer)
+            assert False, "labels is empty"
+        input_ids = safe_ids(input_ids, tokenizer.vocab_size, tokenizer.pad_token_id)
+        labels = safe_ids(labels, tokenizer.vocab_size, IGNORE_TOKEN_ID)
+        return input_ids, labels
 
 
 class BUSTMDataset(Dataset):

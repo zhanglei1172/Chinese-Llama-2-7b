@@ -141,3 +141,5 @@ def get_dataset(dataset_name: str = ""):
                 datasets.append(dataset)
         dataset = ConcatDataset(datasets=datasets)
     return dataset
+
+get_dataset("C-Eval")
