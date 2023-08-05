@@ -13,7 +13,7 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-from flageval_datasets import CEvalDataset
+from flageval_datasets import CEvalDataset, LinkSoulCEvalDataset
 from llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn
 
 replace_llama_attn_with_flash_attn()
@@ -50,6 +50,7 @@ class DataArguments:
     data_cache_path: str = field(default=None,
                            metadata={"help": "Path to the cached jsonl data."})
     lazy_preprocess: bool = False
+    base: bool = field(default=False)
 
 
 @dataclass
@@ -217,7 +218,10 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
     # train_dataset = LazySupervisedDataset(train_json, tokenizer=tokenizer)
     l_datasets = []
     for j_file in glob.iglob(os.path.join(data_args.data_path, "*.json")):
-        _dataset = CEvalDataset(tokenizer=tokenizer, ceval_path=j_file)
+        if data_args.base:
+            _dataset = CEvalDataset(tokenizer=tokenizer, ceval_path=j_file)
+        else:
+            _dataset = LinkSoulCEvalDataset(tokenizer=tokenizer, ceval_path=j_file)
         l_datasets.append(_dataset)
     train_dataset = ConcatDataset(datasets=l_datasets)
     
@@ -266,7 +270,7 @@ def train():
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
-        padding_side="right",
+        # padding_side="left",
         use_fast=False,
     )
     tokenizer.pad_token = tokenizer.unk_token

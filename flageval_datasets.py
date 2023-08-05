@@ -24,7 +24,7 @@ B_INST, E_INST = "[INST]", "[/INST]"
 B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
 IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
-class CEvalDataset(Dataset):
+class LinkSoulCEvalDataset(Dataset):
     dummy_message = {
             "system": "这个任务是中国关于civil考试的问题，请从给出的A、B、C、D四个选项中，选出其中的正确答案。请回答'A'或'B'或'C'或'D'\n",
             "conversations": [
@@ -81,7 +81,7 @@ class CEvalDataset(Dataset):
             max_try -= 1
         if max_try == 0:
             print("Warning: cannot generate prompt without Question index")
-        prompt = self.first_line
+        prompt = ""
         for idx in idns:
             entry = json_data[idx]
             question = entry["question"]
@@ -97,7 +97,7 @@ class CEvalDataset(Dataset):
             formatted_string += f"\n答案: {answer}"
 
             prompt = prompt + "\n\n" + formatted_string
-        return prompt
+        return prompt.strip()
 
     def __getitem__(self, index):
         # prompt = self.first_line
@@ -169,7 +169,7 @@ class CEvalDataset(Dataset):
             # raise ValueError("instruction is empty")
         system = B_SYS + system + E_SYS
         # add system before the first content in conversations
-        item["conversations"][0]['value'] = system + item["conversations"][0]['value']
+        item["conversations"][0]['value'] = system + "\n\n" + item["conversations"][0]['value']
         # item["input"] = system + item["input"]
         for i, turn in enumerate(item["conversations"]):
             role = turn['from']
@@ -199,6 +199,49 @@ class CEvalDataset(Dataset):
         labels = safe_ids(labels, tokenizer.vocab_size, IGNORE_TOKEN_ID)
         return input_ids, labels
 
+class CEvalDataset(LinkSoulCEvalDataset):
+    
+    @staticmethod
+    def _tokenize(item, tokenizer):
+        roles = {"human": "user", "gpt": "assistant"}
+        input_ids = []
+        labels = []
+        # if "instruction" in item and len(item["instruction"]) > 0:
+        #     system = item["instruction"]
+        # else:
+        system = item["system"]
+            # raise ValueError("instruction is empty")
+        system = system
+        # add system before the first content in conversations
+        item["conversations"][0]['value'] = system + "\n\n" + item["conversations"][0]['value']
+        # item["input"] = system + item["input"]
+        for i, turn in enumerate(item["conversations"]):
+            role = turn['from']
+            content = turn['value']
+            content = content.strip()
+            if role == 'human':
+                content = f"{content}"
+                content_ids = tokenizer.encode(content)
+                labels += [IGNORE_TOKEN_ID] * (len(content_ids))
+            else:
+                # assert role == "gpt"
+                content = f"{content}"
+                content_ids = tokenizer.encode(content, add_special_tokens=False) + [tokenizer.eos_token_id]   # add_special_tokens=False remove bos token, and add eos at the end
+                labels += content_ids
+            input_ids += content_ids
+
+        input_ids = input_ids[:tokenizer.model_max_length]
+        labels = labels[:tokenizer.model_max_length]
+
+        trunc_id = last_index(labels, IGNORE_TOKEN_ID) + 1
+        input_ids = input_ids[:trunc_id]
+        labels = labels[:trunc_id]
+        if len(labels) == 0:
+            return CEvalDataset._tokenize(CEvalDataset.dummy_message, tokenizer)
+            assert False, "labels is empty"
+        input_ids = safe_ids(input_ids, tokenizer.vocab_size, tokenizer.pad_token_id)
+        labels = safe_ids(labels, tokenizer.vocab_size, IGNORE_TOKEN_ID)
+        return input_ids, labels
 
 class BUSTMDataset(Dataset):
     def __init__(self, ceval_path, using_gpt=False, item_size=5):
