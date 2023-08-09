@@ -17,6 +17,7 @@ def last_index(lst, value):
 def safe_ids(ids, max_value, pad_id):
     return [i if i < max_value else pad_id for i in ids]
 
+
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 huggingface_datasets = ["RAFT", "TruthfulQA", "IMDB", "BoolQ", "MMLU"]
@@ -24,14 +25,51 @@ B_INST, E_INST = "[INST]", "[/INST]"
 B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
 IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
+
 class LinkSoulCEvalDataset(Dataset):
     dummy_message = {
-            "system": "这个任务是中国关于civil考试的问题，请从给出的A、B、C、D四个选项中，选出其中的正确答案。请回答'A'或'B'或'C'或'D'\n",
-            "conversations": [
-                {"from": "human","value":"这个任务是中国关于civil考试的问题，请从给出的A、B、C、D四个选项中，选出其中的正确答案。请回答'A'或'B'或'C'或'D'\n\n\n请效仿此示例：问题:1， 2， 2， 4， ____， 32\n选项：A. 6\nB. 8\nC. 16\nD. 24\n答案: B\n\n请效仿此示例：问题:浪漫的时代总富于瑰丽的想象，灾难的岁月自然免不了灰暗的色彩，普罗米修斯的千秋功过就这样交替在“恩人”与“罪人”这两极间频繁地晃动着，让人____。难怪在学养深厚的经典注疏家维斯特看来，研究文献虽汗牛充栋，其实却____。 填入画横线部分最恰当的一项是____。\n选项：A. 捉摸不定 平淡无奇\nB. 无所适从 乏善可陈\nC. 扑朔迷离 差强人意\nD. 眼花缭乱 不赞一词\n答案: C\n\n请效仿此示例：问题:一个世界范围的对生产某些破坏臭氧层的化学物质的禁令只能提供一种受到保护的幻觉。已经生产出的大量的这种化学物质已经作为制冷剂存在于数百万台冰箱中。一旦它们到达大气中的臭氧层，它们引起的反应无法被停止。因此没有办法来阻止这些化学物质进一步破坏臭氧层。下面哪项最能加强上述的论述?____\n选项：A. 人们无法准确测出作为冰箱制冷剂存在的破坏臭氧层的化学物质的数量\nB. 在现代社会，为避免不健康甚至对生命构成潜在威胁的状况，冷藏食物是必要的\nC. 即使人们放弃使用冰箱，早已存在于冰箱中的制冷剂还是会威胁大气中的臭氧\nD. 冰箱中的制冷剂可以在冰箱完成使命后被完全开发并重新使用\n答案: C\n\n请效仿此示例：问题:军队的战斗力取决于武器装备和人员素质。在2008年与俄罗斯的军队冲突中损失惨重的格鲁吉亚，准备花费90亿美元，用现代化装备重新武装自己的军队。尽管美国非常支持格鲁吉亚加强军事力量，却不准备将先进的武器卖给它。以下各项陈述，除哪项陈述外，都可以解释美国的这种做法?____\n选项：A. 俄罗斯准备要求安理会对格鲁吉亚实行武器禁运\nB. 格鲁吉亚军队为这场战争准备了3年，尽管全副美式装备，却不堪一击\nC. 格军的战机在开战后数小时就放弃起飞，巡逻艇直接被俄军俘获并用卡车运走\nD. 格军的一名高级将领临阵脱逃，把部队丢弃不顾\n答案: A\n\n请效仿此示例：问题:下列情形哪一项属于自首?____\n选项：A. 甲杀人后其父主动报案并将甲送到派出所，甲当即交代了杀人的全部事实和经过\nB. 甲和乙共同贪污之后，主动到检察机关交代自己的贪污事实，但未提及乙\nC. 甲和乙共同盗窃之后，主动向公安机关反映乙曾经诈骗数千元，经查证属实\nD. 甲给监察局打电话，承认自己收受他人1万元贿赂，并交代了事情经过，然后出走不知所踪\n答案: B\n\n问题:1，0，9，16，____，48\n选项：\nA. 33\nB. 25\nC. 36\nD. 42\n答案: "}, {"from":"gpt", "value":"B"}],
-            
-        }
-    def __init__(self, tokenizer: transformers.PreTrainedTokenizer, ceval_path,using_gpt=False, item_size=5):
+        "system": "这个任务是中国关于civil考试的问题，请从给出的A、B、C、D四个选项中，选出其中的正确答案。请回答'A'或'B'或'C'或'D'\n",
+        "conversations": [
+            {
+                "from": "human",
+                "value": "问题:1， 2， 2， 4， ____， 32\n选项：A. 6\nB. 8\nC. 16\nD. 24\n答案: ",
+            },
+            {"from": "gpt", "value": "B"},
+            {
+                "from": "human",
+                "value": "问题:浪漫的时代总富于瑰丽的想象，灾难的岁月自然免不了灰暗的色彩，普罗米修斯的千秋功过就这样交替在“恩人”与“罪人”这两极间频繁地晃动着，让人____。难怪在学养深厚的经典注疏家维斯特看来，研究文献虽汗牛充栋，其实却____。 填入画横线部分最恰当的一项是____。\n选项：A. 捉摸不定 平淡无奇\nB. 无所适从 乏善可陈\nC. 扑朔迷离 差强人意\nD. 眼花缭乱 不赞一词\n答案: ",
+            },
+            {"from": "gpt", "value": "C"},
+            {
+                "from": "human",
+                "value": "问题:一个世界范围的对生产某些破坏臭氧层的化学物质的禁令只能提供一种受到保护的幻觉。已经生产出的大量的这种化学物质已经作为制冷剂存在于数百万台冰箱中。一旦它们到达大气中的臭氧层，它们引起的反应无法被停止。因此没有办法来阻止这些化学物质进一步破坏臭氧层。下面哪项最能加强上述的论述?____\n选项：A. 人们无法准确测出作为冰箱制冷剂存在的破坏臭氧层的化学物质的数量\nB. 在现代社会，为避免不健康甚至对生命构成潜在威胁的状况，冷藏食物是必要的\nC. 即使人们放弃使用冰箱，早已存在于冰箱中的制冷剂还是会威胁大气中的臭氧\nD. 冰箱中的制冷剂可以在冰箱完成使命后被完全开发并重新使用\n答案: ",
+            },
+            {"from": "gpt", "value": "C"},
+            {
+                "from": "human",
+                "value": "问题:军队的战斗力取决于武器装备和人员素质。在2008年与俄罗斯的军队冲突中损失惨重的格鲁吉亚，准备花费90亿美元，用现代化装备重新武装自己的军队。尽管美国非常支持格鲁吉亚加强军事力量，却不准备将先进的武器卖给它。以下各项陈述，除哪项陈述外，都可以解释美国的这种做法?____\n选项：A. 俄罗斯准备要求安理会对格鲁吉亚实行武器禁运\nB. 格鲁吉亚军队为这场战争准备了3年，尽管全副美式装备，却不堪一击\nC. 格军的战机在开战后数小时就放弃起飞，巡逻艇直接被俄军俘获并用卡车运走\nD. 格军的一名高级将领临阵脱逃，把部队丢弃不顾\n答案: ",
+            },
+            {"from": "gpt", "value": "A"},
+            {
+                "from": "human",
+                "value": "问题:下列情形哪一项属于自首?____\n选项：A. 甲杀人后其父主动报案并将甲送到派出所，甲当即交代了杀人的全部事实和经过\nB. 甲和乙共同贪污之后，主动到检察机关交代自己的贪污事实，但未提及乙\nC. 甲和乙共同盗窃之后，主动向公安机关反映乙曾经诈骗数千元，经查证属实\nD. 甲给监察局打电话，承认自己收受他人1万元贿赂，并交代了事情经过，然后出走不知所踪\n答案: ",
+            },
+            {"from": "gpt", "value": "B"},
+            {
+                "from": "human",
+                "value": "问题:1，0，9，16，____，48\n选项：\nA. 33\nB. 25\nC. 36\nD. 42\n答案: ",
+            },
+            {"from": "gpt", "value": "B"},
+        ],
+    }
+
+    def __init__(
+        self,
+        tokenizer: transformers.PreTrainedTokenizer,
+        ceval_path,
+        using_gpt=False,
+        item_size=5,
+    ):
         super().__init__()
         self.tokenizer = tokenizer
         with open(ceval_path, "r", encoding="utf-8") as file:
@@ -81,7 +119,7 @@ class LinkSoulCEvalDataset(Dataset):
             max_try -= 1
         if max_try == 0:
             print("Warning: cannot generate prompt without Question index")
-        prompt = ""
+        messages = []
         for idx in idns:
             entry = json_data[idx]
             question = entry["question"]
@@ -89,15 +127,16 @@ class LinkSoulCEvalDataset(Dataset):
             answer = entry["answer"]
             # answer = entry["answer"]+'.'+choices[ord(entry["answer"])-65]
 
-            formatted_string = f"请效仿此示例：问题:{question}\n"
+            formatted_string = f"问题:{question}\n"
             formatted_string += "选项："
             formatted_string += "\n".join(
                 [f"{chr(65+i)}. {choice}" for i, choice in enumerate(choices)]
             )
-            formatted_string += f"\n答案: {answer}"
+            formatted_string += "\n答案: "
 
-            prompt = prompt + "\n\n" + formatted_string
-        return prompt.strip()
+            messages.append(formatted_string)
+            messages.append(f"{answer}")
+        return messages
 
     def __getitem__(self, index):
         # prompt = self.first_line
@@ -124,17 +163,28 @@ class LinkSoulCEvalDataset(Dataset):
             [f"{chr(65+i)}. {choice}" for i, choice in enumerate(choices)]
         )
         formatted_string += f"\n答案: "
-        prompt = prompt + "\n\n" + formatted_string
-        human = prompt
         system = self.first_line
-        gpt = answer
-        messages = [{"from": "human", "value": human}, {"from": "gpt", "value": gpt}]
+        if isinstance(prompt, str):
+            prompt = prompt + "\n\n" + formatted_string
+            human = prompt
+            gpt = answer
+            messages = [
+                {"from": "human", "value": human},
+                {"from": "gpt", "value": gpt},
+            ]
+        else:
+            messages = []
+            for i, x in enumerate(prompt):
+                if i % 2 == 0:
+                    messages.append({"from": "human", "value": x})
+                else:
+                    messages.append({"from": "gpt", "value": x})
+            messages.append({"from": "human", "value": formatted_string})
+            messages.append({"from": "gpt", "value": answer})
         item = {"conversations": messages, "system": system}
         # self._tokenize(item, self.tokenizer)
 
-        input_ids, labels = self._tokenize(
-            copy.deepcopy(item),
-            self.tokenizer)
+        input_ids, labels = self._tokenize(copy.deepcopy(item), self.tokenizer)
         input_ids = torch.tensor(input_ids)
         labels = torch.tensor(labels)
         ret = dict(
@@ -157,6 +207,7 @@ class LinkSoulCEvalDataset(Dataset):
         # prompt = prompt + "\n\n" + formatted_string
         # sample = [prompt, answer]
         # return [sample]
+
     @staticmethod
     def _tokenize(item, tokenizer):
         roles = {"human": "user", "gpt": "assistant"}
@@ -166,28 +217,32 @@ class LinkSoulCEvalDataset(Dataset):
         #     system = item["instruction"]
         # else:
         system = item["system"]
-            # raise ValueError("instruction is empty")
+        # raise ValueError("instruction is empty")
         system = B_SYS + system + E_SYS
         # add system before the first content in conversations
-        item["conversations"][0]['value'] = system + "\n\n" + item["conversations"][0]['value']
+        item["conversations"][0]["value"] = (
+            system + "\n\n" + item["conversations"][0]["value"]
+        )
         # item["input"] = system + item["input"]
         for i, turn in enumerate(item["conversations"]):
-            role = turn['from']
-            content = turn['value']
+            role = turn["from"]
+            content = turn["value"]
             content = content.strip()
-            if role == 'human':
+            if role == "human":
                 content = f"{B_INST} {content} {E_INST} "
                 content_ids = tokenizer.encode(content)
                 labels += [IGNORE_TOKEN_ID] * (len(content_ids))
             else:
                 # assert role == "gpt"
                 content = f"{content} "
-                content_ids = tokenizer.encode(content, add_special_tokens=False) + [tokenizer.eos_token_id]   # add_special_tokens=False remove bos token, and add eos at the end
+                content_ids = tokenizer.encode(content, add_special_tokens=False) + [
+                    tokenizer.eos_token_id
+                ]  # add_special_tokens=False remove bos token, and add eos at the end
                 labels += content_ids
             input_ids += content_ids
 
-        input_ids = input_ids[:tokenizer.model_max_length]
-        labels = labels[:tokenizer.model_max_length]
+        input_ids = input_ids[: tokenizer.model_max_length]
+        labels = labels[: tokenizer.model_max_length]
 
         trunc_id = last_index(labels, IGNORE_TOKEN_ID) + 1
         input_ids = input_ids[:trunc_id]
@@ -199,8 +254,35 @@ class LinkSoulCEvalDataset(Dataset):
         labels = safe_ids(labels, tokenizer.vocab_size, IGNORE_TOKEN_ID)
         return input_ids, labels
 
+
 class CEvalDataset(LinkSoulCEvalDataset):
-    
+    def __generate_prompt__(self, ban_index=-1):
+        json_data = self.dataset
+        idns = random.sample(range(0, len(json_data)), self.item_size)
+        max_try = 10
+        while ban_index in idns and max_try > 0:
+            idns = random.sample(range(0, len(json_data)), self.item_size)
+            max_try -= 1
+        if max_try == 0:
+            print("Warning: cannot generate prompt without Question index")
+        prompt = ""
+        for idx in idns:
+            entry = json_data[idx]
+            question = entry["question"]
+            choices = entry["choices"]
+            answer = entry["answer"]
+            # answer = entry["answer"]+'.'+choices[ord(entry["answer"])-65]
+
+            formatted_string = f"请效仿此示例：问题:{question}\n"
+            formatted_string += "选项："
+            formatted_string += "\n".join(
+                [f"{chr(65+i)}. {choice}" for i, choice in enumerate(choices)]
+            )
+            formatted_string += f"\n答案: {answer}"
+
+            prompt = prompt + "\n\n" + formatted_string
+        return prompt.strip()
+
     @staticmethod
     def _tokenize(item, tokenizer):
         roles = {"human": "user", "gpt": "assistant"}
@@ -210,28 +292,32 @@ class CEvalDataset(LinkSoulCEvalDataset):
         #     system = item["instruction"]
         # else:
         system = item["system"]
-            # raise ValueError("instruction is empty")
+        # raise ValueError("instruction is empty")
         system = system
         # add system before the first content in conversations
-        item["conversations"][0]['value'] = system + "\n\n" + item["conversations"][0]['value']
+        item["conversations"][0]["value"] = (
+            system + "\n\n" + item["conversations"][0]["value"]
+        )
         # item["input"] = system + item["input"]
         for i, turn in enumerate(item["conversations"]):
-            role = turn['from']
-            content = turn['value']
+            role = turn["from"]
+            content = turn["value"]
             content = content.strip()
-            if role == 'human':
+            if role == "human":
                 content = f"{content}"
                 content_ids = tokenizer.encode(content)
                 labels += [IGNORE_TOKEN_ID] * (len(content_ids))
             else:
                 # assert role == "gpt"
                 content = f"{content}"
-                content_ids = tokenizer.encode(content, add_special_tokens=False) + [tokenizer.eos_token_id]   # add_special_tokens=False remove bos token, and add eos at the end
+                content_ids = tokenizer.encode(content, add_special_tokens=False) + [
+                    tokenizer.eos_token_id
+                ]  # add_special_tokens=False remove bos token, and add eos at the end
                 labels += content_ids
             input_ids += content_ids
 
-        input_ids = input_ids[:tokenizer.model_max_length]
-        labels = labels[:tokenizer.model_max_length]
+        input_ids = input_ids[: tokenizer.model_max_length]
+        labels = labels[: tokenizer.model_max_length]
 
         trunc_id = last_index(labels, IGNORE_TOKEN_ID) + 1
         input_ids = input_ids[:trunc_id]
@@ -242,6 +328,7 @@ class CEvalDataset(LinkSoulCEvalDataset):
         input_ids = safe_ids(input_ids, tokenizer.vocab_size, tokenizer.pad_token_id)
         labels = safe_ids(labels, tokenizer.vocab_size, IGNORE_TOKEN_ID)
         return input_ids, labels
+
 
 class BUSTMDataset(Dataset):
     def __init__(self, ceval_path, using_gpt=False, item_size=5):
@@ -445,8 +532,10 @@ class RAFTDataset(Dataset):
             if ban_index in inds:
                 sub_name = n
                 break
-        prompt = self.first_line+sub_name+".\n"
-        labels = self.sub2label[sub_name].names # dataset['train'].features['Label'].names
+        prompt = self.first_line + sub_name + ".\n"
+        labels = self.sub2label[
+            sub_name
+        ].names  # dataset['train'].features['Label'].names
         prompt_possible_answers = [f"{i}. {labels[i]}\n" for i in range(1, len(labels))]
         prompt += "".join(prompt_possible_answers) + "\n"
         # sub2ind[sub_name]
@@ -480,8 +569,9 @@ class RAFTDataset(Dataset):
         # sample = {"prompt": prompt, "answer": answer, "labels": labels}
         sample = {"prompt": prompt, "answer": answer}
         return sample
-    def generate_labels(self,labels):
-        choiceses=[]
+
+    def generate_labels(self, labels):
+        choiceses = []
         for label in labels:
             for subname in self.sub2label:
                 if label in self.sub2label[subname].names:
@@ -489,6 +579,8 @@ class RAFTDataset(Dataset):
                     choiceses.append(self.sub2label[subname].names[1:])
                     break
         return choiceses
+
+
 class TruthfulQADataset(Dataset):
     """TruthfulQA dataset from huggingface
     说明：
@@ -537,7 +629,7 @@ class TruthfulQADataset(Dataset):
 
         for i, sample in enumerate(samples):
             z = sample["mc1_targets"]
-            
+
             # Shuffle choices and adjust answer accordingly
             shuffled_indices = list(range(len(z["choices"])))
             random.shuffle(shuffled_indices)
@@ -548,7 +640,12 @@ class TruthfulQADataset(Dataset):
             prompt += "options: " + "\n"
             prompt += (
                 "\n".join(
-                    [f"{a}. {c}" for (a, c) in zip(ALPHABET[: len(shuffled_choices)], shuffled_choices)]
+                    [
+                        f"{a}. {c}"
+                        for (a, c) in zip(
+                            ALPHABET[: len(shuffled_choices)], shuffled_choices
+                        )
+                    ]
                 )
                 + "\n"
             )
@@ -793,11 +890,13 @@ class IMDBDataset(Dataset):
 
         sample = {"prompt": prompt, "answer": answer}
         return sample
-    def generate_labels(self,labels):
-        choiceses=[]
+
+    def generate_labels(self, labels):
+        choiceses = []
         for label in labels:
             choiceses.append(list(self.prompt_dict.values()))
         return choiceses
+
 
 class BoolQDataset(Dataset):
     """BoolQ dataset from huggingface
@@ -1173,15 +1272,19 @@ class CSLDataset(Dataset):
         samples = random.sample(self.dataset, self.item_size)
         # Initialize the prompt string
         prompt = self.first_line
-        choices=["A","B"]
-        indexes=["0","1"]
+        choices = ["A", "B"]
+        indexes = ["0", "1"]
         for i, sample in enumerate(samples):
             # Add the sample information to the prompt
             prompt += "摘要：" + str(sample["abst"]) + "\n"
             prompt += "关键词：" + str(sample["keyword"]) + "\n"
             random.shuffle(indexes)
-            prompt += choices[indexes.index("0")] + "." + str(self.prompt_dict["0"]) + "\n"
-            prompt += choices[indexes.index("1")] + "." + str(self.prompt_dict["1"]) + "\n"
+            prompt += (
+                choices[indexes.index("0")] + "." + str(self.prompt_dict["0"]) + "\n"
+            )
+            prompt += (
+                choices[indexes.index("1")] + "." + str(self.prompt_dict["1"]) + "\n"
+            )
             # prompt += "答案：" + str(self.prompt_dict[str(sample["label"])]) + "\n"
             prompt += "答案：" + choices[indexes.index(str(sample["label"]))] + "\n"
             prompt += "\n"
@@ -1193,10 +1296,10 @@ class CSLDataset(Dataset):
         idx = index
         prompt = self.__generate_prompt__(idx)
         entry = self.dataset[idx]
-        choices=["A","B"]
-        indexes=["0","1"]
+        choices = ["A", "B"]
+        indexes = ["0", "1"]
         random.shuffle(indexes)
- 
+
         # answer = str(self.prompt_dict[str(entry["label"])])
         answer = choices[indexes.index(str(entry["label"]))]
 
