@@ -38,7 +38,7 @@ output_dir="./LinkSoul_checkpoints_llama2_chat_lora_4"
 
 torchrun --nnodes=1 --node_rank=0 --nproc_per_node=1 \
     --master_port=25003 \
-        train_lora.py \
+        train_lora_lowbit.py \
         --model_name_or_path ${MODEL_PATH} \
         --data_path ${DATASET} \
         --bf16 True \
