@@ -1,4 +1,5 @@
-DATASET="/mnt/nfs-share/FlagEvalChat/data/process/ceval_json/test"
+# DATASET="/mnt/nfs-share/FlagEvalChat/data/process/ceval_json/test"
+DATASET="/mnt/nfs/leizhang/2030_datasets_lora/dataset/"
 # DATASET="LinkSoul/instruction_merge_set"
 
 DATA_CACHE_PATH=""
@@ -34,18 +35,16 @@ MODEL_PATH="/mnt/nfs/jyg/Chinese-llama-2-7b-data/Chinese-Llama-2-7b-1.1"
 #         --base True
 
 
-output_dir="./LinkSoul_checkpoints_llama2_chat_lora_4"
+output_dir="./LinkSoul_checkpoints_llama2_chat_lora_DATA"
 
-torchrun --nnodes=1 --node_rank=0 --nproc_per_node=1 \
-    --master_port=25003 \
-        train_lora_lowbit.py \
+accelerate launch train_lora_debug.py \
         --model_name_or_path ${MODEL_PATH} \
         --data_path ${DATASET} \
         --bf16 True \
         --output_dir ${output_dir} \
         --num_train_epochs 1 \
-        --per_device_train_batch_size 4 \
-        --per_device_eval_batch_size 4 \
+        --per_device_train_batch_size 2 \
+        --per_device_eval_batch_size 2 \
         --gradient_accumulation_steps 1 \
         --evaluation_strategy 'no' \
         --save_strategy 'steps' \

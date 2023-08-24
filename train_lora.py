@@ -27,18 +27,25 @@ import numpy as np
 import torch
 import torch.nn as nn
 import transformers
+from accelerate import Accelerator
 from peft import LoraConfig, TaskType, get_peft_config, get_peft_model
 from torch.utils.data import ConcatDataset, Dataset
 from transformers import Trainer
 from transformers.trainer import get_scheduler
 from transformers.trainer_pt_utils import LabelSmoother
 
-from flageval_datasets import CEvalDataset, LinkSoulCEvalDataset
+from flageval_datasets import (BoolQDataset, BUSTMDataset, CEvalDataset,
+                               ChIDDataset, CLUEWSCDataset, CSLDataset,
+                               EPRSTMTDataset, IMDBDataset,
+                               LinkSoulBUSTMDataset, LinkSoulCEvalDataset,
+                               LinkSoulOCNLIDataset, MMLUDataset, OCNLIDataset,
+                               RAFTDataset, TNEWSDataset)
+
 # from llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn
 
 # replace_llama_attn_with_flash_attn()
 
-
+accelerator = Accelerator()
 IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
 
@@ -229,12 +236,32 @@ def make_supervised_data_module(
     # train_json = load_json(data_args.data_path, data_args.data_cache_path)
     # train_dataset = LazySupervisedDataset(train_json, tokenizer=tokenizer)
     l_datasets = []
-    for j_file in glob.iglob(os.path.join(data_args.data_path, "*.json")):
-        if data_args.base:
-            _dataset = CEvalDataset(tokenizer=tokenizer, ceval_path=j_file)
-        else:
-            _dataset = LinkSoulCEvalDataset(tokenizer=tokenizer, ceval_path=j_file)
-        l_datasets.append(_dataset)
+    folders=os.listdir(data_args.data_path)
+    for folder in folders:
+        dataset_path = data_args.data_path + '/' + folder
+        for j_file in glob.iglob(os.path.join(dataset_path, "*.json")):
+            if  folder == 'chid':
+                _dataset = ChIDDataset(tokenizer=tokenizer, ceval_path=j_file,item_size=5)
+            elif folder == 'cluewsc':
+                _dataset = CLUEWSCDataset(tokenizer=tokenizer,ceval_path=j_file,item_size=5)
+            elif folder == 'bustm':
+                _dataset = LinkSoulBUSTMDataset(tokenizer=tokenizer,ceval_path=j_file,item_size=5)
+            elif folder == 'ocnli':
+                _dataset = LinkSoulOCNLIDataset(tokenizer=tokenizer,ceval_path=j_file,item_size=5)
+            elif folder == 'csl':
+                _dataset = CSLDataset(tokenizer=tokenizer,ceval_path=j_file,item_size=5)
+            elif folder == 'imdb':
+                _dataset = IMDBDataset(tokenizer=tokenizer,ceval_path=j_file,item_size=5)
+            elif folder == 'eprstmt':
+                _dataset = EPRSTMTDataset(tokenizer=tokenizer,ceval_path=j_file,item_size=5)
+            elif folder == 'RAFT':
+                _dataset = RAFTDataset(tokenizer=tokenizer,ceval_path=j_file,item_size=1)
+            elif folder == 'tnews':
+                _dataset = TNEWSDataset(tokenizer=tokenizer,ceval_path=j_file,item_size=5)
+            else:continue            
+            l_datasets.append(_dataset)
+    l_datasets.append(BoolQDataset(tokenizer=tokenizer,item_size=5))
+    l_datasets.append(MMLUDataset(tokenizer=tokenizer,item_size=5))
     train_dataset = ConcatDataset(datasets=l_datasets)
 
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
@@ -293,6 +320,7 @@ def train():
     
     peft_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
+        target_modules=["up_proj","down_proj", "gate_proj"],
         inference_mode=False,
         r=8,
         lora_alpha=32,
@@ -303,6 +331,7 @@ def train():
     model = get_peft_model(model, peft_config)
     # model.print_trainable_parameters()
     # model = FSDP(model, ..., auto_wrap_policy=auto_wrap_policy)
+
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
