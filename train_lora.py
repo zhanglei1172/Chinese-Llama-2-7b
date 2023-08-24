@@ -262,6 +262,7 @@ def make_supervised_data_module(
             l_datasets.append(_dataset)
     l_datasets.append(BoolQDataset(tokenizer=tokenizer,item_size=5))
     l_datasets.append(MMLUDataset(tokenizer=tokenizer,item_size=5))
+    rank0_print(len(l_datasets))
     train_dataset = ConcatDataset(datasets=l_datasets)
 
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)

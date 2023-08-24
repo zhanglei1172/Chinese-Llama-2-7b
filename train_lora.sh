@@ -37,7 +37,7 @@ MODEL_PATH="/mnt/nfs/jyg/Chinese-llama-2-7b-data/Chinese-Llama-2-7b-1.1"
 
 output_dir="./LinkSoul_checkpoints_llama2_chat_lora_DATA"
 
-accelerate launch train_lora_debug.py \
+accelerate launch train_lora.py \
         --model_name_or_path ${MODEL_PATH} \
         --data_path ${DATASET} \
         --bf16 True \
